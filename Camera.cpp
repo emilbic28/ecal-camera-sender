@@ -1,31 +1,32 @@
-#include <ios>
-#include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
 
-#include <QMediaService>
-#include <QMediaRecorder>
-#include <QCameraViewfinder>
 #include <QCameraInfo>
-#include <QMediaMetaData>
-
-#include <QMessageBox>
-#include <QPalette>
-
 #include <QtWidgets>
 
 #include "Camera.h"
 
-Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher) : m_publisher(publisher), photosTaken(0)
+Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& camera_name) :
+  m_publisher(publisher), camera_name_(camera_name) ,photosTaken(0)
 {
   const QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
+  if (cameras.isEmpty())
+  {
+    std::cerr << "No available camera to use" << std::endl;
+    return;
+  }
+
   for (const QCameraInfo &cameraInfo : cameras) {
-      if (cameraInfo.deviceName() == "/dev/video0")
+      if (cameraInfo.deviceName().toStdString() == camera_name_)
       {
         setCamera(cameraInfo);
+        return;
       }
   }
+
+  std::cout << "Selected camera not found, setting to default camera." << std::endl;
+  setCamera(QCameraInfo::defaultCamera());
 }
 
 Camera::~Camera()
@@ -54,19 +55,17 @@ void Camera::setCamera(const QCameraInfo& cameraInfo)
     foxglove::CompressedImage compressedImageProto;
     compressedImageProto.set_data(protoData);
     compressedImageProto.set_format("jpg");
-    compressedImageProto.set_frame_id(std::to_string(photosTaken));
     m_publisher.Send(compressedImageProto);
 
-    std::cout << "Sent photo number: " << photosTaken << " with size: " << compressedImageProto.ByteSizeLong() << " and frame_id " << compressedImageProto.frame_id() << std::endl;
+    std::cout << "Sent photo number: " << photosTaken << " with size: " << compressedImageProto.ByteSizeLong() << std::endl;
 
     // limit the number of photos sent
-    // std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    // std::this_thread::sleep_for(std::chrono::milliseconds(500));
     emit photoSentSignal();
   });
 
   QObject::connect(m_imageCapture.data(), &QCameraImageCapture::readyForCaptureChanged, [=] (bool state) {
      if(state == true) {
-         std::cout << "EAB: readyForCaptureChanged\n";
          m_camera.data()->searchAndLock();
          m_imageCapture.data()->capture();
          m_camera.data()->unlock();
