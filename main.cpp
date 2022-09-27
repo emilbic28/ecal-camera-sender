@@ -8,7 +8,7 @@
 #include <QtWidgets>
 
 #include "compressed_image.pb.h"
-#include "Camera.h"
+#include "camera.h"
 
 int main(int argc, char** argv)
 {

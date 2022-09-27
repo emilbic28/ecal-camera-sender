@@ -5,7 +5,7 @@
 #include <QCameraInfo>
 #include <QtWidgets>
 
-#include "Camera.h"
+#include "camera.h"
 
 Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& camera_name) :
   m_publisher(publisher), camera_name_(camera_name) ,photosTaken(0)
