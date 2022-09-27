@@ -14,8 +14,8 @@ find_package(Qt5MultimediaWidgets REQUIRED)
 
 set(source_files
   main.cpp
-  Camera.h
-  Camera.cpp
+  camera.h
+  camera.cpp
 )
 
 set(protobuf_files
