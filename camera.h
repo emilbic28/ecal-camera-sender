@@ -23,13 +23,13 @@ private slots:
 private:
   void processCapturedImage(int requestId, const QImage& img);
 
-  QScopedPointer<QCamera> m_camera;
-  QScopedPointer<QCameraImageCapture> m_imageCapture;
+  QScopedPointer<QCamera> camera_;
+  QScopedPointer<QCameraImageCapture> imageCapture_;
 
-  eCAL::protobuf::CPublisher<foxglove::CompressedImage>& m_publisher;
+  eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher_;
 
-  std::string camera_name_;
-  size_t photosTaken;
+  std::string cameraName_;
+  size_t photosTaken_;
 
 signals:
   void photoSentSignal();

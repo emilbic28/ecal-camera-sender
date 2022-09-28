@@ -7,8 +7,8 @@
 
 #include "camera.h"
 
-Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& camera_name) :
-  m_publisher(publisher), camera_name_(camera_name) ,photosTaken(0)
+Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& cameraName) :
+  publisher_(publisher), cameraName_(cameraName) ,photosTaken_(0)
 {
   const QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
   if (cameras.isEmpty())
@@ -18,7 +18,7 @@ Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher,
   }
 
   for (const QCameraInfo &cameraInfo : cameras) {
-      if (cameraInfo.deviceName().toStdString() == camera_name_)
+      if (cameraInfo.deviceName().toStdString() == cameraName_)
       {
         setCamera(cameraInfo);
         return;
@@ -35,15 +35,15 @@ Camera::~Camera()
 
 void Camera::setCamera(const QCameraInfo& cameraInfo)
 {
-  m_camera.reset(new QCamera(cameraInfo));
-  m_camera.data()->setCaptureMode(QCamera::CaptureStillImage);
+  camera_.reset(new QCamera(cameraInfo));
+  camera_.data()->setCaptureMode(QCamera::CaptureStillImage);
 
-  m_imageCapture.reset(new QCameraImageCapture(m_camera.data()));
-  m_imageCapture.data()->setCaptureDestination(QCameraImageCapture::CaptureToBuffer);
+  imageCapture_.reset(new QCameraImageCapture(camera_.data()));
+  imageCapture_.data()->setCaptureDestination(QCameraImageCapture::CaptureToBuffer);
 
   // connect
-  QObject::connect(m_imageCapture.data(), &QCameraImageCapture::imageCaptured, [=] (int id, QImage img){
-    ++photosTaken;
+  QObject::connect(imageCapture_.data(), &QCameraImageCapture::imageCaptured, [=] (int id, QImage img){
+    ++photosTaken_;
     QByteArray buf;
     QBuffer buffer(&buf);
     buffer.open(QIODevice::WriteOnly);
@@ -55,42 +55,42 @@ void Camera::setCamera(const QCameraInfo& cameraInfo)
     foxglove::CompressedImage compressedImageProto;
     compressedImageProto.set_data(protoData);
     compressedImageProto.set_format("jpg");
-    m_publisher.Send(compressedImageProto);
+    publisher_.Send(compressedImageProto);
 
-    std::cout << "Sent photo number: " << photosTaken << " with size: " << compressedImageProto.ByteSizeLong() << std::endl;
+    std::cout << "Sent photo number: " << photosTaken_ << " with size: " << compressedImageProto.ByteSizeLong() << std::endl;
 
     // limit the number of photos sent
     // std::this_thread::sleep_for(std::chrono::milliseconds(500));
     emit photoSentSignal();
   });
 
-  QObject::connect(m_imageCapture.data(), &QCameraImageCapture::readyForCaptureChanged, [=] (bool state) {
+  QObject::connect(imageCapture_.data(), &QCameraImageCapture::readyForCaptureChanged, [=] (bool state) {
      if(state == true) {
-         m_camera.data()->searchAndLock();
-         m_imageCapture.data()->capture();
-         m_camera.data()->unlock();
+         camera_.data()->searchAndLock();
+         imageCapture_.data()->capture();
+         camera_.data()->unlock();
      }
   });
 
   QObject::connect(this, &Camera::photoSentSignal, [this](){
     if (isReadyForCapture())
     {
-      m_camera.data()->searchAndLock();
-      m_imageCapture.data()->capture();
-      m_camera.data()->unlock();
+      camera_.data()->searchAndLock();
+      imageCapture_.data()->capture();
+      camera_.data()->unlock();
     }
   });
 
-  m_camera.data()->start();
+  camera_.data()->start();
 }
 
 void Camera::takePhoto()
 {
-  m_imageCapture.data()->capture();
+  imageCapture_.data()->capture();
 }
 
 bool Camera::isReadyForCapture()
 {
-  return m_imageCapture.data()->isReadyForCapture();
+  return imageCapture_.data()->isReadyForCapture();
 }
 
