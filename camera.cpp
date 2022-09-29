@@ -84,11 +84,6 @@ void Camera::setCamera(const QCameraInfo& cameraInfo)
   camera_.data()->start();
 }
 
-void Camera::takePhoto()
-{
-  imageCapture_.data()->capture();
-}
-
 bool Camera::isReadyForCapture()
 {
   return imageCapture_.data()->isReadyForCapture();

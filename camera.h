@@ -15,14 +15,11 @@ class Camera : public QObject
 public:
   Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& camera_name);
   ~Camera();
-  void takePhoto();
   bool isReadyForCapture();
 
 private slots:
   void setCamera(const QCameraInfo& cameraInfo);
 private:
-  void processCapturedImage(int requestId, const QImage& img);
-
   QScopedPointer<QCamera> camera_;
   QScopedPointer<QCameraImageCapture> imageCapture_;
 
