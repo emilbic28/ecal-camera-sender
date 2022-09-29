@@ -7,8 +7,8 @@
 
 #include "camera.h"
 
-Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& cameraName) :
-  publisher_(publisher), cameraName_(cameraName) ,photosTaken_(0)
+Camera::Camera(eCAL::protobuf::CPublisher<foxglove::CompressedImage>& publisher, std::string& cameraName, uint16_t width, uint16_t height) :
+  publisher_(publisher), cameraName_(cameraName), width_(width), height_(height), photosTaken_(0)
 {
   const QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
   if (cameras.isEmpty())
@@ -37,9 +37,29 @@ void Camera::setCamera(const QCameraInfo& cameraInfo)
 {
   camera_.reset(new QCamera(cameraInfo));
   camera_.data()->setCaptureMode(QCamera::CaptureStillImage);
+  camera_.data()->load();
 
   imageCapture_.reset(new QCameraImageCapture(camera_.data()));
   imageCapture_.data()->setCaptureDestination(QCameraImageCapture::CaptureToBuffer);
+
+
+  if (isGivenResolutionSupported())
+  {
+    QImageEncoderSettings imageSettings;
+    imageSettings.setCodec("image/jpg");
+    imageSettings.setResolution(width_, height_);
+    imageCapture_.data()->setEncodingSettings(imageSettings);
+  }
+  else
+  {
+    std::cout << "Given resolution is not supported from the camera, setting default resolution. List of supported resolutions: ";
+    auto resolutions = imageCapture_.data()->supportedResolutions();
+    for (const auto& it : resolutions)
+    {
+      std::cout << it.width() << "x" << it.height() << ", ";
+    }
+    std::cout << std::endl;
+  }
 
   // connect
   QObject::connect(imageCapture_.data(), &QCameraImageCapture::imageCaptured, [=] (int id, QImage img){
@@ -82,6 +102,14 @@ void Camera::setCamera(const QCameraInfo& cameraInfo)
   });
 
   camera_.data()->start();
+}
+
+bool Camera::isGivenResolutionSupported()
+{
+  QList<QSize> resolutions = imageCapture_.data()->supportedResolutions();
+  QSize givenResolution(width_, height_);
+
+  return resolutions.contains(givenResolution);
 }
 
 bool Camera::isReadyForCapture()
